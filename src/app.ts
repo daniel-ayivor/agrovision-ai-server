@@ -14,8 +14,18 @@ const app = express();
 // MIDDLEWARE
 // ====================================
 
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://agrovision-ai-server.onrender.com",
+    "https://localhost:3000", 
+     "https://localhost:8080",
+      "https://localhost:8081",
 
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 app.use(cookieParser());
