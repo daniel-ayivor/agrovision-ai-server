@@ -5,61 +5,131 @@ import User from "../model/Auth";
 import { AuthRequest } from "../middleware/Middleware";
 import crypto from "crypto";
 
+// Single organization this platform serves
+const ORGANIZATION = "WamiAgro, Ghana";
 
 export const registerUser = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, farmSize, region } = req.body;
 
-    // Check existing user
+    // ── Block admin self-registration ──────────────────────────────────────
+    if (role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin accounts cannot be self-registered.",
+      });
+    }
+
+    // ── Check existing user ────────────────────────────────────────────────
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User already exists"
+        message: "User already exists",
       });
     }
 
-    // Hash password
+    // ── Hash password ──────────────────────────────────────────────────────
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const user = await User.create({
+    // ── Build payload ──────────────────────────────────────────────────────
+    const userPayload: Record<string, any> = {
       name,
       email,
       password: hashedPassword,
-      role
-    });
+      role: role ?? "farmer",
+    };
 
-    // Generate token
+    if (role === "farmer") {
+      userPayload.farmSize = farmSize;
+      userPayload.region   = region;
+    }
+
+    if (role === "agricultural_officer") {
+      // Organization is fixed — no need to store it per user
+      userPayload.region = region;
+    }
+
+    // ── Create & respond ───────────────────────────────────────────────────
+    const user = await User.create(userPayload);
+
     const token = jwt.sign(
-      {
-        id: user._id
-      },
+      { id: user._id },
       process.env.JWT_SECRET as string,
-      {
-        expiresIn: "7d"
-      }
+      { expiresIn: "7d" }
     );
 
     res.status(201).json({
       success: true,
       token,
-      user
+      user,
+      // Expose org name in response so the client can display it
+      ...(role === "agricultural_officer" && { organization: ORGANIZATION }),
     });
 
   } catch (error) {
     console.log(error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+// export const registerUser = async (
+//   req: Request,
+//   res: Response
+// ) => {
+//   try {
+//     const { name, email, password, role } = req.body;
+
+//     // Check existing user
+//     const existingUser = await User.findOne({ email });
+
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "User already exists"
+//       });
+//     }
+
+//     // Hash password
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     // Create user
+//     const user = await User.create({
+//       name,
+//       email,
+//       password: hashedPassword,
+//       role
+//     });
+
+//     // Generate token
+//     const token = jwt.sign(
+//       {
+//         id: user._id
+//       },
+//       process.env.JWT_SECRET as string,
+//       {
+//         expiresIn: "7d"
+//       }
+//     );
+
+//     res.status(201).json({
+//       success: true,
+//       token,
+//       user
+//     });
+
+//   } catch (error) {
+//     console.log(error);
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Server Error"
+//     });
+//   }
+// };
 
 export const loginUser = async (
   req: Request,
