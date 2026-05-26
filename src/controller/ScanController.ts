@@ -6,52 +6,6 @@ import axios from "axios";
 
 
 
-// ====================================
-// CREATE SCAN
-// ====================================
-
-// export const createScan = async (
-//   req: AuthRequest,
-//   res: Response
-// ) => {
-
-//   try {
-
-//     const {
-//       image,
-//       crop,
-//       prediction,
-//       confidence
-//     } = req.body;
-
-//     const scan = await Scan.create({
-
-//       user: req.user.id,
-
-//       image,
-
-//       crop,
-
-//       prediction,
-
-//       confidence
-//     });
-
-//     res.status(201).json({
-//       success: true,
-//       scan
-//     });
-
-//   } catch (error) {
-
-//     console.log(error);
-
-//     res.status(500).json({
-//       success: false,
-//       message: "Server Error"
-//     });
-//   }
-// };
 
 
 export const createScan = async (
