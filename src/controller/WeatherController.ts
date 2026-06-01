@@ -1,21 +1,35 @@
-
-import { Request, Response } from "express";
+import { Response } from "express";
 import { AuthRequest } from "../middleware/Middleware";
-import Scan from "../model/Model";
-import axios from "axios";
 
-// Add this proxy helper inside your backend routes (e.g., inside a utility or weather route file)
-// app.get("/api/weather/geocode",
-     export const getGeocode = async (req: AuthRequest,
-  res: Response) => {
+export const getGeocode = async (req: AuthRequest, res: Response) => {
   try {
-    const { latitude, longitude } = req.query;
-    const response = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&count=1`
-    );
-    const data = await response.json();
-    res.json(data);
+    const { latitude, longitude, name } = req.query;
+
+    // 📍 1. FIX: Reverse Geocoding (Coordinates -> Text Location Name)
+    if (latitude && longitude) {
+      // CRITICAL: Ensure this points to geocoding-api.open-meteo.com/v1/reverse
+      const response = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&count=1`
+      );
+      
+      const data = await response.json();
+      return res.json(data);
+    }
+
+    // 🔍 2. Forward Geocoding (Text Name -> Coordinates)
+    if (name) {
+      const response = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(String(name))}&count=1&language=en`
+      );
+      
+      const data = await response.json();
+      return res.json(data);
+    }
+
+    return res.status(400).json({ error: "Missing query parameters" });
+
   } catch (error) {
-    res.status(500).json({ error: "Failed fetching data from geocoding API" });
+    console.error("Backend Proxy Error:", error);
+    return res.status(500).json({ error: "Failed fetching data from geocoding API" });
   }
-}
+};
