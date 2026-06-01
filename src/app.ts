@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./route/AuthRoute";
 import adminAuthRoutes from "./route/AdminAuthRoute";
 import scanRoutes from "./route/ScanRoute";
+import weatherRoutes from "./route/WeatherRoute";
 import imageUploadRoutes from "./route/ImageRoute";
 
 const app = express();
@@ -41,7 +42,7 @@ app.use("/api/auth/admin", adminAuthRoutes);
 
 app.use("/api/scans", scanRoutes);
 
-app.use("/api/upload", imageUploadRoutes);
+app.use("/api/weather", weatherRoutes);
 
 
 // ====================================
