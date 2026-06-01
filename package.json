@@ -26,8 +26,8 @@
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "tsc",
-    "start": "node dist/app.js"
-  }
+  "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+  "build": "tsc",
+  "start": "node dist/server.js"
+}
 }
