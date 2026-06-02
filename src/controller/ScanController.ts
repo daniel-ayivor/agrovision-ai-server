@@ -18,7 +18,6 @@ export const createScan = async (req: AuthRequest, res: Response) => {
     // ====================================
     // CONVERT BASE64 TO BINARY BUFFER
     // ====================================
-    // Extract raw base64 data by stripping out the metadata prefix (e.g., "data:image/jpeg;base64,")
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, "base64");
 
@@ -26,41 +25,52 @@ export const createScan = async (req: AuthRequest, res: Response) => {
     // CONSTRUCT MULTIPART FORM-DATA FOR FASTAPI
     // ====================================
     const form = new FormData();
-    // 'file' matches the name of the argument in your Python endpoint: file: UploadFile
+    // 'file' matches the route definition: file: UploadFile = File(...)
     form.append("file", imageBuffer, {
       filename: `scan_${Date.now()}.jpg`,
       contentType: "image/jpeg",
     });
 
-    // Clean base URL to remove any trailing slash safely
+    // ====================================
+    // SAFELY COMPOSE TARGET URL
+    // ====================================
+    // Strip trailing slashes from the base URL, then explicitly hardcode the exact endpoint path
     const aiBaseUrl = process.env.AI_API_URL?.replace(/\/$/, "");
+    const targetUrl = `${aiBaseUrl}/predict/`; 
 
     // ====================================
     // SEND FILE BINARY TO FASTAPI
     // ====================================
-    const aiResponse = await axios.post(`${aiBaseUrl}/predict/`, form, {
+    const aiResponse = await axios.post(targetUrl, form, {
       headers: {
-        ...form.getHeaders(), // 🎯 Automatically applies the required boundary headers
+        ...form.getHeaders(), // Required to inject boundary headers
       },
-      timeout: 90000, // Generous time window for Render cold boots
+      timeout: 90000, // Safe window for handling Render cold starts
     });
 
     const predictionData = aiResponse.data;
 
     // ====================================
-    // SAVE TO DATABASE
+    // PARSE & SAVE TO DATABASE
     // ====================================
-    // Safely extract crop names out of class mappings (e.g. 'tomato_early_blight' -> 'Tomato')
+    // Match keys directly to your FastAPI JSON response objects:
     const identifiedDisease = predictionData.predicted_disease || "Unknown";
+    
+    // Extract crop token (e.g. 'tomato_early_blight' -> 'Tomato')
     const inferredCrop = identifiedDisease.split("_")[0];
     const cleanCropName = inferredCrop.charAt(0).toUpperCase() + inferredCrop.slice(1);
+
+    // Human-readable transformation (e.g., 'tomato_early_blight' -> 'Tomato Early Blight')
+    const readablePrediction = identifiedDisease
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char: string) => char.toUpperCase());
 
     const scan = await Scan.create({
       user: req.user.id,
       image,
       crop: cleanCropName,
-      prediction: identifiedDisease.replace(/_/g, " "), // Clean reading display
-      confidence: predictionData.confidence,
+      prediction: readablePrediction, 
+      confidence: predictionData.confidence, // Saves the rounded percentage float directly
     });
 
     res.status(201).json({
@@ -79,144 +89,46 @@ export const createScan = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// export const createScan = async (
-//   req: AuthRequest,
-//   res: Response
-// ) => {
-//   try {
-//     const { image } = req.body;
-
-//     // 1. Clean the base URL to make sure it doesn't end with a slash
-//     const aiBaseUrl = process.env.AI_API_URL?.replace(/\/$/, "");
-
-//     // 2. Send precisely to /predict with a generous timeout for cold boots
-//     const aiResponse = await axios.post(
-//       `${aiBaseUrl}/predict`,
-//       { image }, // Sending: { "image": "data:image/jpeg;base64,..." }
-//       {
-//         timeout: 60000, 
-//         headers: {
-//           "Content-Type": "application/json",
-//         }
-//       }
-//     );
-
-//     const predictionData = aiResponse.data;
-
-//     // SAVE TO DATABASE
-//     const scan = await Scan.create({
-//       user: req.user.id,
-//       image,
-//       crop: predictionData.crop,
-//       prediction: predictionData.prediction,
-//       confidence: predictionData.confidence
-//     });
-
-//     res.status(201).json({
-//       success: true,
-//       scan,
-//       ai: predictionData
-//     });
-
-//   } catch (error: any) {
-//     console.log("Error details:", error.response?.data || error.message);
-//     res.status(error.response?.status || 500).json({
-//       success: false,
-//       message: error.response?.data || "Server Error"
-//     });
-//   }
-// };
-
-// export const createScan = async (
-//   req: AuthRequest,
-//   res: Response
-// ) => {
-
-//   try {
-
-//     const { image } = req.body;
-
-//     // ====================================
-//     // SEND IMAGE TO FASTAPI
-//     // ====================================
-
-//     const aiResponse = await axios.post(
-
-//       `${process.env.AI_API_URL}/predict`,
-
-//       {
-//         image
-//       }
-//     );
-
-//     const predictionData = aiResponse.data;
-
-//     // ====================================
-//     // SAVE TO DATABASE
-//     // ====================================
-
-//     const scan = await Scan.create({
-
-//       user: req.user.id,
-
-//       image,
-
-//       crop: predictionData.crop,
-
-//       prediction: predictionData.prediction,
-
-//       confidence: predictionData.confidence
-//     });
-
-//     res.status(201).json({
-
-//       success: true,
-
-//       scan,
-
-//       ai: predictionData
-//     });
-
-//   } catch (error) {
-
-//     console.log(error);
-
-//     res.status(500).json({
-
-//       success: false,
-
-//       message: "Server Error"
-//     });
-//   }
-// };
-
 // ====================================
 // GET MY SCANS
 // ====================================
-
-export const getMyScans = async (
-  req: AuthRequest,
-  res: Response
-) => {
-
+export const getMyScans = async (req: AuthRequest, res: Response) => {
   try {
-
-    const scans = await Scan.find({
-      user: req.user.id
-    })
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      scans
-    });
-
+    const scans = await Scan.find({ user: req.user.id }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, scans });
   } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
 
-    res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
+// ====================================
+// GET SINGLE SCAN
+// ====================================
+export const getSingleScan = async (req: Request, res: Response) => {
+  try {
+    const scan = await Scan.findById(req.params.id).populate("user", "name email");
+    if (!scan) {
+      return res.status(404).json({ success: false, message: "Scan not found" });
+    }
+    res.status(200).json({ success: true, scan });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// ====================================
+// DELETE SCAN
+// ====================================
+export const deleteScan = async (req: Request, res: Response) => {
+  try {
+    const scan = await Scan.findById(req.params.id);
+    if (!scan) {
+      return res.status(404).json({ success: false, message: "Scan not found" });
+    }
+    await scan.deleteOne();
+    res.status(200).json({ success: true, message: "Scan deleted" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
@@ -225,76 +137,76 @@ export const getMyScans = async (
 // GET SINGLE SCAN
 // ====================================
 
-export const getSingleScan = async (
-  req: Request,
-  res: Response
-) => {
+// export const getSingleScan = async (
+//   req: Request,
+//   res: Response
+// ) => {
 
-  try {
+//   try {
 
-    const scan = await Scan.findById(
-      req.params.id
-    ).populate(
-      "user",
-      "name email"
-    );
+//     const scan = await Scan.findById(
+//       req.params.id
+//     ).populate(
+//       "user",
+//       "name email"
+//     );
 
-    if (!scan) {
-      return res.status(404).json({
-        success: false,
-        message: "Scan not found"
-      });
-    }
+//     if (!scan) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Scan not found"
+//       });
+//     }
 
-    res.status(200).json({
-      success: true,
-      scan
-    });
+//     res.status(200).json({
+//       success: true,
+//       scan
+//     });
 
-  } catch (error) {
+//   } catch (error) {
 
-    res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
-  }
-};
+//     res.status(500).json({
+//       success: false,
+//       message: "Server Error"
+//     });
+//   }
+// };
 
 
 // ====================================
 // DELETE SCAN
 // ====================================
 
-export const deleteScan = async (
-  req: Request,
-  res: Response
-) => {
+// export const deleteScan = async (
+//   req: Request,
+//   res: Response
+// ) => {
 
-  try {
+//   try {
 
-    const scan = await Scan.findById(
-      req.params.id
-    );
+//     const scan = await Scan.findById(
+//       req.params.id
+//     );
 
-    if (!scan) {
-      return res.status(404).json({
-        success: false,
-        message: "Scan not found"
-      });
-    }
+//     if (!scan) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Scan not found"
+//       });
+//     }
 
-    await scan.deleteOne();
+//     await scan.deleteOne();
 
-    res.status(200).json({
-      success: true,
-      message: "Scan deleted"
-    });
+//     res.status(200).json({
+//       success: true,
+//       message: "Scan deleted"
+//     });
 
-  } catch (error) {
+//   } catch (error) {
 
-    res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
-  }
-};
+//     res.status(500).json({
+//       success: false,
+//       message: "Server Error"
+//     });
+//   }
+// };
