@@ -7,6 +7,8 @@ import adminAuthRoutes from "./route/AdminAuthRoute";
 import scanRoutes from "./route/ScanRoute";
 import weatherRoutes from "./route/WeatherRoute";
 import imageUploadRoutes from "./route/ImageRoute";
+import userDashboardRouter from "./route/UserRoute";
+import adminRouter from "./route/AdminRoute";
 
 const app = express();
 
@@ -47,6 +49,12 @@ app.use("/api/auth/admin", adminAuthRoutes);
 app.use("/api/scans", scanRoutes);
 
 app.use("/api/weather", weatherRoutes);
+// Mount User Space Dashboard Operations Endpoints
+app.use("/api/userspace", userDashboardRouter);
+// Mount management routes safely
+app.use("/api/admin", adminRouter);
+
+app.use("/api/images", imageUploadRoutes);
 
 
 // ====================================
