@@ -1,11 +1,14 @@
+// backend/middleware/Middleware.ts
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import User from "../model/Auth"; // Ensure your Mongoose model path is correct
 
+// 1. We define and export it right here. No import needed!
 export interface AuthRequest extends Request {
   user?: any;
 }
 
-export const protect = (
+export const protect = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -13,7 +16,7 @@ export const protect = (
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
         message: "Not authorized"
@@ -21,16 +24,18 @@ export const protect = (
     }
 
     const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: string };
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    );
+    const userRecord = await User.findById(decoded.id).select("-password");
+    if (!userRecord) {
+      return res.status(401).json({
+        success: false,
+        message: "User not found"
+      });
+    }
 
-    req.user = decoded;
-
+    req.user = userRecord;
     next();
-
   } catch (error) {
     return res.status(401).json({
       success: false,

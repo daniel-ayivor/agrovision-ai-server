@@ -1,13 +1,14 @@
+// backend/middleware/MiddlewareAdmin.ts
 import { Response, NextFunction } from "express";
-import { AuthRequest } from "./Middleware";
+// Import the custom interface cleanly from the file we just fixed above
+import { AuthRequest } from "./Middleware"; 
 
 export const adminOnly = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
-
-  if (req.user.role !== "admin") {
+  if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
       message: "Admin access only"
