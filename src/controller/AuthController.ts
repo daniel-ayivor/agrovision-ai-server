@@ -16,12 +16,12 @@ export const registerUser = async (
     const { name, email, password, role, farmSize, region } = req.body;
 
     // ── Block admin self-registration ──────────────────────────────────────
-    if (role === "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Admin accounts cannot be self-registered.",
-      });
-    }
+    // if (role === "admin") {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Admin accounts cannot be self-registered.",
+    //   });
+    // }
 
     // ── Check existing user ────────────────────────────────────────────────
     const existingUser = await User.findOne({ email });
