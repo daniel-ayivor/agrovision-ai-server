@@ -6,70 +6,116 @@ import axios from "axios";
 
 
 
-
-
 export const createScan = async (
   req: AuthRequest,
   res: Response
 ) => {
-
   try {
-
     const { image } = req.body;
 
-    // ====================================
-    // SEND IMAGE TO FASTAPI
-    // ====================================
+    // 1. Clean the base URL to make sure it doesn't end with a slash
+    const aiBaseUrl = process.env.AI_API_URL?.replace(/\/$/, "");
 
+    // 2. Send precisely to /predict with a generous timeout for cold boots
     const aiResponse = await axios.post(
-
-      `${process.env.AI_API_URL}/predict`,
-
+      `${aiBaseUrl}/predict`,
+      { image }, // Sending: { "image": "data:image/jpeg;base64,..." }
       {
-        image
+        timeout: 60000, 
+        headers: {
+          "Content-Type": "application/json",
+        }
       }
     );
 
     const predictionData = aiResponse.data;
 
-    // ====================================
     // SAVE TO DATABASE
-    // ====================================
-
     const scan = await Scan.create({
-
       user: req.user.id,
-
       image,
-
       crop: predictionData.crop,
-
       prediction: predictionData.prediction,
-
       confidence: predictionData.confidence
     });
 
     res.status(201).json({
-
       success: true,
-
       scan,
-
       ai: predictionData
     });
 
-  } catch (error) {
-
-    console.log(error);
-
-    res.status(500).json({
-
+  } catch (error: any) {
+    console.log("Error details:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
       success: false,
-
-      message: "Server Error"
+      message: error.response?.data || "Server Error"
     });
   }
 };
+
+// export const createScan = async (
+//   req: AuthRequest,
+//   res: Response
+// ) => {
+
+//   try {
+
+//     const { image } = req.body;
+
+//     // ====================================
+//     // SEND IMAGE TO FASTAPI
+//     // ====================================
+
+//     const aiResponse = await axios.post(
+
+//       `${process.env.AI_API_URL}/predict`,
+
+//       {
+//         image
+//       }
+//     );
+
+//     const predictionData = aiResponse.data;
+
+//     // ====================================
+//     // SAVE TO DATABASE
+//     // ====================================
+
+//     const scan = await Scan.create({
+
+//       user: req.user.id,
+
+//       image,
+
+//       crop: predictionData.crop,
+
+//       prediction: predictionData.prediction,
+
+//       confidence: predictionData.confidence
+//     });
+
+//     res.status(201).json({
+
+//       success: true,
+
+//       scan,
+
+//       ai: predictionData
+//     });
+
+//   } catch (error) {
+
+//     console.log(error);
+
+//     res.status(500).json({
+
+//       success: false,
+
+//       message: "Server Error"
+//     });
+//   }
+// };
 
 // ====================================
 // GET MY SCANS
