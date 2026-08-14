@@ -53,15 +53,43 @@ export const getCropDistribution = async (req: AuthRequest, res: Response, next:
 // 2. USERS MANAGEMENT CONTROLLERS (Derived)
 // ==========================================
 
-export const getAllUsers = async (req: AuthRequest, res: Response) => {
+export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    // Aggregate distinct users along with data about their last activity
     const users = await Scan.aggregate([
       {
         $group: {
-          _id: "$user",
+          _id: "$user", // Groups by user ObjectId from Scan collection
           totalScansSubmitted: { $sum: 1 },
           lastScanDate: { $max: "$createdAt" }
+        }
+      },
+      // Join with your actual 'users' collection
+      {
+        $lookup: {
+          from: "users",          // MongoDB collection name for User model (pluralized)
+          localField: "_id",      
+          foreignField: "_id",    
+          as: "userInfo"
+        }
+      },
+      {
+        $unwind: {
+          path: "$userInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Map properties matching your IUser and IScan models
+      {
+        $project: {
+          _id: 1,
+          totalScansSubmitted: 1,
+          lastScanDate: 1,
+          name: "$userInfo.name",
+          email: "$userInfo.email",
+          role: "$userInfo.role",
+          region: "$userInfo.region",
+          profileImage: "$userInfo.profileImage", // Uses your schema's exact property name
+          farmSize: "$userInfo.farmSize"
         }
       },
       { $sort: { lastScanDate: -1 } }
