@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "../../middleware/Middleware"; // Adjust path to your middleware file
 import Scan from "../../model/Model"; // Your exact Scan model import
+import KnowledgeArticle from "../../model/Knowledge"; // Your exact Knowledge model import
 
 // ==========================================
 // 1. OVERVIEW & 4. ANALYTICS CONTROLLERS
@@ -164,8 +165,16 @@ export const resolveFlag = async (req: AuthRequest, res: Response) => {
 
 export const getArticles = async (req: AuthRequest, res: Response) => {
   try {
-    // Dynamically compile your Knowledge Base UI view by aggregating existing system data
-    const distinctDiseases = await Scan.aggregate([
+    // 1. Fetch explicitly curated knowledge articles from the database
+    const curatedArticles = await KnowledgeArticle.find().lean();
+
+    // If we have curated articles, return them immediately
+    if (curatedArticles.length > 0) {
+      return res.status(200).json({ success: true, data: curatedArticles });
+    }
+
+    // 2. Otherwise, aggregate distinct diseases from scan logs as an auto-discovery fallback
+    const distinctScans = await Scan.aggregate([
       {
         $group: {
           _id: { crop: "$crop", prediction: "$prediction" },
@@ -176,9 +185,9 @@ export const getArticles = async (req: AuthRequest, res: Response) => {
       {
         $project: {
           _id: 0,
+          id: { $concat: ["$_id.crop", "-", "$_id.prediction"] },
           title: "$_id.prediction",
           crop: "$_id.crop",
-          // Calculate an artificial UI severity based on avg confidence trends
           severity: {
             $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }
           },
@@ -188,20 +197,70 @@ export const getArticles = async (req: AuthRequest, res: Response) => {
       { $sort: { title: 1 } }
     ]);
 
-    return res.status(200).json({ success: true, data: distinctDiseases });
+    return res.status(200).json({ success: true, data: distinctScans });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 export const createArticle = async (req: AuthRequest, res: Response) => {
-  return res.status(201).json({ success: true, message: "Custom disease parameters registered globally." });
+  try {
+    const { title, crop, severity } = req.body;
+
+    if (!title || !crop) {
+      return res.status(400).json({ success: false, message: "Title and crop fields are required." });
+    }
+
+    const newArticle = await KnowledgeArticle.create({ title, crop, severity });
+    return res.status(201).json({ 
+      success: true, 
+      data: newArticle, 
+      message: "Custom disease parameters registered globally." 
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 export const updateArticle = async (req: AuthRequest, res: Response) => {
-  return res.status(200).json({ success: true, message: "Disease parameters updated successfully." });
+  try {
+    const { id } = req.params;
+    const { title, crop, severity } = req.body;
+    
+    const updated = await KnowledgeArticle.findByIdAndUpdate(
+      id, 
+      { title, crop, severity }, 
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Article not found in database." });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      data: updated, 
+      message: "Disease parameters updated successfully." 
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 export const deleteArticle = async (req: AuthRequest, res: Response) => {
-  return res.status(200).json({ success: true, message: "Disease records dropped from lookup cache." });
+  try {
+    const { id } = req.params;
+    const deleted = await KnowledgeArticle.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Article not found." });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Disease records dropped from lookup cache." 
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };

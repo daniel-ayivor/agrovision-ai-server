@@ -229,39 +229,6 @@ export const getProfile = async (
 // UPDATE PROFILE
 // ====================================
 
-// export const updateProfile = async (
-//   req: AuthRequest,
-//   res: Response
-// ) => {
-//   try {
-
-//     const { name, email } = req.body;
-
-//     const updatedUser = await User.findByIdAndUpdate(
-//       req.user.id,
-//       {
-//         name,
-//         email
-//       },
-//       {
-//         new: true
-//       }
-//     ).select("-password");
-
-//     res.status(200).json({
-//       success: true,
-//       user: updatedUser
-//     });
-
-//   } catch (error) {
-
-//     res.status(500).json({
-//       success: false,
-//       message: "Server Error"
-//     });
-//   }
-// };
-
 
 
 // ====================================
