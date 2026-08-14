@@ -10,15 +10,52 @@ import mongoose from "mongoose";
 // ====================================
 // 1. DASHBOARD: METRICS & DISTRIBUTION
 // ====================================
+// export const getUserDashboardSummary = async (req: AuthRequest, res: Response) => {
+//   try {
+//     const userId = req.user.id;
+
+//     // Fetch user's recent scans for the summary feed
+//     const recentScans = await Scan.find({ user: userId })
+//       .sort({ createdAt: -1 })
+//       .limit(5)
+//       .select("crop prediction confidence createdAt");
+
+//     // Aggregate crop scan counts for your "Crop Distribution" charts
+//     const cropStats = await Scan.aggregate([
+//       { $match: { user: new mongoose.Types.ObjectId(userId) } },
+//       { $group: { _id: "$crop", count: { $sum: 1 } } },
+//       { $sort: { count: -1 } }
+//     ]);
+
+//     // Format metrics cleanly for easy frontend integration
+//     const distributionMap = cropStats.reduce((acc: any, current: any) => {
+//       if (current._id) acc[current._id] = current.count;
+//       return acc;
+//     }, {});
+
+//     return res.status(200).json({
+//       success: true,
+//       recentScans,
+//       cropDistribution: distributionMap
+//     });
+//   } catch (error: any) {
+//     return res.status(500).json({ success: false, message: "Dashboard aggregation failed", error: error.message });
+//   }
+// };
+
+
+// ====================================
+// 1. DASHBOARD: METRICS & DISTRIBUTION
+// ====================================
 export const getUserDashboardSummary = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.id;
 
-    // Fetch user's recent scans for the summary feed
+    // Fetch user's recent scans including the image field for frontend display cards
     const recentScans = await Scan.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select("crop prediction confidence createdAt");
+      .select("crop prediction confidence image createdAt");
 
     // Aggregate crop scan counts for your "Crop Distribution" charts
     const cropStats = await Scan.aggregate([
@@ -42,35 +79,6 @@ export const getUserDashboardSummary = async (req: AuthRequest, res: Response) =
     return res.status(500).json({ success: false, message: "Dashboard aggregation failed", error: error.message });
   }
 };
-
-// ====================================
-// 2. COMMUNITY: CREATE POST WITH TAGS
-// ====================================
-// export const createCommunityPost = async (req: AuthRequest, res: Response) => {
-//   try {
-//     const { text, image } = req.body;
-
-//     if (!text || text.trim() === "") {
-//       return res.status(400).json({ success: false, message: "Post content cannot be empty" });
-//     }
-
-//     // Automatically capture hashtags like #fall-armyworm from the textbox input
-//     const hashtagRegex = /#[\w-]+/g;
-//     const matches = text.match(hashtagRegex) || [];
-//     const cleanTags = matches.map((tag: string) => tag.replace("#", "").toLowerCase());
-
-//     const post = await Post.create({
-//       user: req.user.id,
-//       text,
-//       image, // Optional string value mapping back to your Cloudinary uploader logic
-//       tags: cleanTags
-//     });
-
-//     return res.status(201).json({ success: true, post });
-//   } catch (error: any) {
-//     return res.status(500).json({ success: false, message: "Failed to publish post", error: error.message });
-//   }
-// };
 
 
 // ====================================
