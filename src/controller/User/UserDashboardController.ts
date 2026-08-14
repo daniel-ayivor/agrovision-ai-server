@@ -133,10 +133,54 @@ export const getCommunityPosts = async (req: AuthRequest, res: Response) => {
 // ====================================
 // 4. KNOWLEDGE BASE: DISEASE DIRECTORY
 // ====================================
+// export const getUserKnowledgeBase = async (req: Request, res: Response) => {
+//   try {
+//     // Generates a comprehensive dynamic crop dictionary out of existing Scan logs 
+//     const diseaseGuides = await Scan.aggregate([
+//       {
+//         $group: {
+//           _id: { crop: "$crop", prediction: "$prediction" },
+//           averageConfidence: { $avg: "$confidence" }
+//         }
+//       },
+//       {
+//         $project: {
+//           _id: 0,
+//           diseaseName: "$_id.prediction",
+//           cropType: "$_id.crop",
+//           perceivedSeverity: {
+//             // Evaluates severity index targets based on typical machine model margins
+//             $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }
+//           }
+//         }
+//       },
+//       { $sort: { cropType: 1, diseaseName: 1 } }
+//     ]);
+
+//     return res.status(200).json({ success: true, data: diseaseGuides });
+//   } catch (error: any) {
+//     return res.status(500).json({ success: false, message: "Failed to assemble knowledge resources", error: error.message });
+//   }
+// };
+
+
+
+// ====================================
+// 4. KNOWLEDGE BASE: DISEASE DIRECTORY
+// ====================================
 export const getUserKnowledgeBase = async (req: Request, res: Response) => {
   try {
-    // Generates a comprehensive dynamic crop dictionary out of existing Scan logs 
+    // Generates a comprehensive dynamic crop dictionary out of existing Scan logs
     const diseaseGuides = await Scan.aggregate([
+      {
+        // FIX: exclude failed/unrecognized scans before grouping — otherwise
+        // "Not a valid plant image or disease not recognized" gets aggregated
+        // in as if it were a real crop/disease entry.
+        $match: {
+          crop: { $ne: "Not a valid plant image or disease not recognized" },
+          prediction: { $ne: "Not A Valid Plant Image Or Disease Not Recognized" }
+        }
+      },
       {
         $group: {
           _id: { crop: "$crop", prediction: "$prediction" },
