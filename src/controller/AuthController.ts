@@ -229,24 +229,71 @@ export const getProfile = async (
 // UPDATE PROFILE
 // ====================================
 
+// export const updateProfile = async (
+//   req: AuthRequest,
+//   res: Response
+// ) => {
+//   try {
+
+//     const { name, email } = req.body;
+
+//     const updatedUser = await User.findByIdAndUpdate(
+//       req.user.id,
+//       {
+//         name,
+//         email
+//       },
+//       {
+//         new: true
+//       }
+//     ).select("-password");
+
+//     res.status(200).json({
+//       success: true,
+//       user: updatedUser
+//     });
+
+//   } catch (error) {
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Server Error"
+//     });
+//   }
+// };
+
+
+
+// ====================================
+// UPDATE PROFILE
+// ====================================
+
 export const updateProfile = async (
   req: AuthRequest,
   res: Response
 ) => {
   try {
+    const { name, region, farmSize, profileImage } = req.body;
 
-    const { name, email } = req.body;
+    // Build update object dynamically to only update provided fields
+    const updateData: Record<string, any> = {};
+    if (name !== undefined) updateData.name = name;
+    if (region !== undefined) updateData.region = region;
+    if (farmSize !== undefined) updateData.farmSize = farmSize;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
-      {
-        name,
-        email
-      },
-      {
-        new: true
-      }
+      { $set: updateData },
+      { new: true, runValidators: true }
     ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -254,15 +301,13 @@ export const updateProfile = async (
     });
 
   } catch (error) {
-
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Server Error"
     });
   }
 };
-
-
 // ====================================
 // CHANGE PASSWORD
 // ====================================
