@@ -27,7 +27,7 @@ app.use(cors({
     "*",
     "http://localhost:5173",
     "https://agrovision-ai-server.onrender.com",
-    "https://agrovision-ai-five.vercel.app/",
+    "https://agrovision-ai-five.vercel.app",
     "https://localhost:3000", 
      "https://localhost:8080",
       "https://localhost:8081",
