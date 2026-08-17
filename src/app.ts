@@ -20,48 +20,25 @@ const app = express();
 // app.use(cors());
 
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://agrovision-ai-five.vercel.app",
-     "http://localhost:5173",
-     "https://agrovision-ai-server.onrender.com",
-     "https://agrovision-ai-five.vercel.app/",
-     "https://localhost:3000", 
-      "https://localhost:8080",
-       "https://localhost:8081",
-];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
+
+app.use(cors({
+  origin: [
+    "*",
+    "http://localhost:5173",
+    "https://agrovision-ai-server.onrender.com",
+    "https://agrovision-ai-five.vercel.app/",
+    "https://localhost:3000", 
+     "https://localhost:8080",
+      "https://localhost:8081",
+
+
+  ],
+   credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-app.options("*", cors());
-// app.use(cors({
-//   origin: [
-//     "*",
-//     "http://localhost:5173",
-//     "https://agrovision-ai-server.onrender.com",
-//     "https://agrovision-ai-five.vercel.app/",
-//     "https://localhost:3000", 
-//      "https://localhost:8080",
-//       "https://localhost:8081",
-
-
-//   ],
-//   credentials: true
-// }));
-// app.use(express.json());
+}));
+app.use(express.json());
 
 app.use(cookieParser());
 
