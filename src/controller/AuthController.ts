@@ -15,13 +15,6 @@ export const registerUser = async (
   try {
     const { name, email, password, role, farmSize, region } = req.body;
 
-    // ── Block admin self-registration ──────────────────────────────────────
-    // if (role === "admin") {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "Admin accounts cannot be self-registered.",
-    //   });
-    // }
 
     // ── Check existing user ────────────────────────────────────────────────
     const existingUser = await User.findOne({ email });
@@ -188,6 +181,70 @@ export const loginUser = async (
   }
 };
 
+
+
+
+export const registerAdminUser = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { name, email, password, role, farmSize, region } = req.body;
+
+
+    // ── Check existing user ────────────────────────────────────────────────
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists",
+      });
+    }
+
+    // ── Hash password ──────────────────────────────────────────────────────
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // ── Build payload ──────────────────────────────────────────────────────
+    const userPayload: Record<string, any> = {
+      name,
+      email,
+      password: hashedPassword,
+      role: role ?? "farmer",
+    };
+
+    if (role === "farmer") {
+      userPayload.farmSize = farmSize;
+      userPayload.region   = region;
+    }
+
+    if (role === "agricultural_officer") {
+      // Organization is fixed — no need to store it per user
+      userPayload.region = region;
+    }
+
+    // ── Create & respond ───────────────────────────────────────────────────
+    const user = await User.create(userPayload);
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" }
+    );
+
+    res.status(201).json({
+      success: true,
+      token,
+      user,
+      // Expose org name in response so the client can display it
+      ...(role === "agricultural_officer" && { organization: ORGANIZATION }),
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
 
 
 // ====================================
