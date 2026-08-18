@@ -14,7 +14,16 @@ import mongoose from "mongoose";
 // ====================================
 export const getUserDashboardSummary = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
+    // FIX: Safely resolve user identifier regardless of middleware property mapping (_id vs id)
+    const userId = req.user?.id || req.user?._id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Dashboard aggregation failed",
+        error: "Authentication context missing: user identifier not found on request object."
+      });
+    }
 
     // Fetch user's recent scans including the image field for frontend display cards
     const recentScans = await Scan.find({ user: userId })
@@ -41,10 +50,13 @@ export const getUserDashboardSummary = async (req: AuthRequest, res: Response) =
       cropDistribution: distributionMap
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: "Dashboard aggregation failed", error: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      message: "Dashboard aggregation failed", 
+      error: error.message 
+    });
   }
 };
-
 
 // ====================================
 // 2. COMMUNITY: CREATE POST WITH TAGS
@@ -107,14 +119,64 @@ export const getCommunityPosts = async (req: AuthRequest, res: Response) => {
 // ====================================
 // 4. KNOWLEDGE BASE: DISEASE DIRECTORY
 // ====================================
+// export const getUserKnowledgeBase = async (req: Request, res: Response) => {
+//   try {
+//     // Generates a comprehensive dynamic crop dictionary out of existing Scan logs
+//     const diseaseGuides = await Scan.aggregate([
+//       {
+//         $match: {
+//           crop: { $ne: "Not a valid plant image or disease not recognized" },
+//           prediction: { $ne: "Not A Valid Plant Image Or Disease Not Recognized" }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: { crop: "$crop", prediction: "$prediction" },
+//           averageConfidence: { $avg: "$confidence" }
+//         }
+//       },
+//       {
+//         $project: {
+//           _id: 0,
+//           diseaseName: "$_id.prediction",
+//           cropType: "$_id.crop",
+//           perceivedSeverity: {
+//             // Evaluates severity index targets based on typical machine model margins
+//             $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }
+//           }
+//         }
+//       },
+//       { $sort: { cropType: 1, diseaseName: 1 } }
+//     ]);
+
+//     return res.status(200).json({ success: true, data: diseaseGuides });
+//   } catch (error: any) {
+//     return res.status(500).json({ success: false, message: "Failed to assemble knowledge resources", error: error.message });
+//   }
+// };
+
+
 export const getUserKnowledgeBase = async (req: Request, res: Response) => {
   try {
     // Generates a comprehensive dynamic crop dictionary out of existing Scan logs
     const diseaseGuides = await Scan.aggregate([
       {
         $match: {
-          crop: { $ne: "Not a valid plant image or disease not recognized" },
-          prediction: { $ne: "Not A Valid Plant Image Or Disease Not Recognized" }
+          crop: { 
+            $nin: [
+              "Not a valid plant image or disease not recognized", 
+              null, 
+              ""
+            ] 
+          },
+          prediction: { 
+            $nin: [
+              "Not A Valid Plant Image Or Disease Not Recognized", 
+              "Not a valid plant image or disease not recognized", 
+              null, 
+              ""
+            ] 
+          }
         }
       },
       {
@@ -139,6 +201,10 @@ export const getUserKnowledgeBase = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, data: diseaseGuides });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: "Failed to assemble knowledge resources", error: error.message });
+    return res.status(500).json({ 
+      success: false, 
+      message: "Failed to assemble knowledge resources", 
+      error: error.message 
+    });
   }
 };
