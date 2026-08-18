@@ -3,7 +3,7 @@ import { AuthRequest } from "../../middleware/Middleware";
 import Scan from "../../model/Model";
 import KnowledgeArticle from "../../model/Knowledge";
 import User from "../../model/Auth"; // adjust path to match your actual model file
-
+import PostModel from "../../model/Post"; // Adjust path to your Community Post model file
 export const getSystemSummary = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // 1. Total Scans run on the platform
@@ -201,6 +201,42 @@ export const createArticle = async (req: AuthRequest, res: Response) => {
       success: true, 
       data: newArticle, 
       message: "Custom disease parameters registered globally." 
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+
+export const getCommunityPostsForAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const posts = await PostModel.find()
+      .populate("user", "name email profileImage role")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: posts,
+      message: "Community feed retrieved successfully for administration view."
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const deleteCommunityPostByAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const deletedPost = await PostModel.findByIdAndDelete(id);
+
+    if (!deletedPost) {
+      return res.status(404).json({ success: false, message: "Community post not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Community post removed by administration moderation."
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
