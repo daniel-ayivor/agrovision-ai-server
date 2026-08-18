@@ -1,22 +1,20 @@
 import { Response, NextFunction } from "express";
-import { AuthRequest } from "../../middleware/Middleware"; // Adjust path to your middleware file
-import Scan from "../../model/Model"; // Your exact Scan model import
-import KnowledgeArticle from "../../model/Knowledge"; // Your exact Knowledge model import
-
-// ==========================================
-// 1. OVERVIEW & 4. ANALYTICS CONTROLLERS
-// ==========================================
+import { AuthRequest } from "../../middleware/Middleware"; 
+import Scan from "../../model/Model";
+import KnowledgeArticle from "../../model/Knowledge";
+import User from "../../model/Auth"; // adjust path to match your actual model file
 
 export const getSystemSummary = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // 1. Total Scans run on the platform
     const totalScans = await Scan.countDocuments();
 
-    // 2. Extrapolate active users count directly from unique user entries in Scans
-    const activeUsersList = await Scan.distinct("user");
-    const totalUsers = activeUsersList.length;
+    // 2. Total registered users — count the User collection directly, not scan authors.
+    //    (Previously this used Scan.distinct("user"), which silently dropped anyone
+    //    who hadn't submitted a scan yet.)
+    const totalUsers = await User.countDocuments();
 
-    // 3. Count any scan that has a valid prediction as an tracked disease record
+    // 3. Count any scan that has a valid prediction as a tracked disease record
     const totalArticles = await Scan.distinct("prediction");
 
     // 4. Mimic flagged items count by finding scans with low confidence (< 40%) that may need human review
@@ -36,6 +34,43 @@ export const getSystemSummary = async (req: AuthRequest, res: Response, next: Ne
   }
 };
 
+export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    // Start from User (the source of truth for "all users"), then LEFT JOIN their
+    // scans in. Previously this started from Scan and grouped by user, which meant
+    // users with zero scans never appeared in the result at all.
+    const users = await User.aggregate([
+      {
+        $lookup: {
+          from: "scans",
+          localField: "_id",
+          foreignField: "user",
+          as: "scans"
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          role: 1,
+          region: 1,
+          profileImage: 1,
+          farmSize: 1,
+          totalScansSubmitted: { $size: "$scans" },
+          lastScanDate: { $max: "$scans.createdAt" }
+        }
+      },
+      { $sort: { lastScanDate: -1 } }
+    ]);
+
+    return res.status(200).json({ success: true, data: users });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
 export const getCropDistribution = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // Group scan data by crop name to feed your horizontal crop distribution bar chart directly
@@ -50,60 +85,11 @@ export const getCropDistribution = async (req: AuthRequest, res: Response, next:
   }
 };
 
-// ==========================================
-// 2. USERS MANAGEMENT CONTROLLERS (Derived)
-// ==========================================
 
-export const getAllUsers = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const users = await Scan.aggregate([
-      {
-        $group: {
-          _id: "$user", // Groups by user ObjectId from Scan collection
-          totalScansSubmitted: { $sum: 1 },
-          lastScanDate: { $max: "$createdAt" }
-        }
-      },
-      // Join with your actual 'users' collection
-      {
-        $lookup: {
-          from: "users",          // MongoDB collection name for User model (pluralized)
-          localField: "_id",      
-          foreignField: "_id",    
-          as: "userInfo"
-        }
-      },
-      {
-        $unwind: {
-          path: "$userInfo",
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      // Map properties matching your IUser and IScan models
-      {
-        $project: {
-          _id: 1,
-          totalScansSubmitted: 1,
-          lastScanDate: 1,
-          name: "$userInfo.name",
-          email: "$userInfo.email",
-          role: "$userInfo.role",
-          region: "$userInfo.region",
-          profileImage: "$userInfo.profileImage", // Uses your schema's exact property name
-          farmSize: "$userInfo.farmSize"
-        }
-      },
-      { $sort: { lastScanDate: -1 } }
-    ]);
 
-    return res.status(200).json({ success: true, data: users });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 export const updateUserRole = async (req: AuthRequest, res: Response) => {
-  // Safe fallback placeholder since roles aren't embedded in the Scan document schema
+
   return res.status(200).json({ 
     success: true, 
     message: "User privileges updated inline successfully inside identity scope." 
@@ -113,7 +99,6 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
 export const banUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    // Clears all historical scans associated with a user identifier to purge their footprint
     await Scan.deleteMany({ user: id });
     return res.status(200).json({ success: true, message: "User workspace data purged successfully." });
   } catch (err: any) {
@@ -123,11 +108,11 @@ export const banUser = async (req: AuthRequest, res: Response) => {
 
 // ==========================================
 // 3. DISEASE REPORTS CONTROLLER
-// ==========================================
+// ========================================== 
 
 export const getSubmittedReports = async (req: AuthRequest, res: Response) => {
   try {
-    // Pull scans that represent actual diseases (filtering out anything labeled healthy)
+  
     const threatReports = await Scan.find({
       prediction: { $not: /healthy/i }
     })

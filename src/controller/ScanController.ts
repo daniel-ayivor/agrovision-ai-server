@@ -15,9 +15,7 @@ export const createScan = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: "No image payload provided" });
     }
 
-    // ====================================
-    // CONVERT BASE64 TO BINARY BUFFER
-    // ====================================
+
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, "base64");
 
@@ -132,81 +130,3 @@ export const deleteScan = async (req: Request, res: Response) => {
   }
 };
 
-
-// ====================================
-// GET SINGLE SCAN
-// ====================================
-
-// export const getSingleScan = async (
-//   req: Request,
-//   res: Response
-// ) => {
-
-//   try {
-
-//     const scan = await Scan.findById(
-//       req.params.id
-//     ).populate(
-//       "user",
-//       "name email"
-//     );
-
-//     if (!scan) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Scan not found"
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       scan
-//     });
-
-//   } catch (error) {
-
-//     res.status(500).json({
-//       success: false,
-//       message: "Server Error"
-//     });
-//   }
-// };
-
-
-// ====================================
-// DELETE SCAN
-// ====================================
-
-// export const deleteScan = async (
-//   req: Request,
-//   res: Response
-// ) => {
-
-//   try {
-
-//     const scan = await Scan.findById(
-//       req.params.id
-//     );
-
-//     if (!scan) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Scan not found"
-//       });
-//     }
-
-//     await scan.deleteOne();
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Scan deleted"
-//     });
-
-//   } catch (error) {
-
-//     res.status(500).json({
-//       success: false,
-//       message: "Server Error"
-//     });
-//   }
-// };

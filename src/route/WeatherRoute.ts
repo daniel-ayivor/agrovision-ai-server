@@ -1,5 +1,5 @@
    
-   import express from "express";
+import express from "express";
 import { getGeocode } from "../controller/WeatherController";
     const router = express.Router();
 

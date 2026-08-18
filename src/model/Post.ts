@@ -9,6 +9,7 @@ export interface IPost extends Document {
   updatedAt: Date;
 }
 
+
 const PostSchema = new Schema<IPost>(
   {
     user: {
@@ -21,7 +22,7 @@ const PostSchema = new Schema<IPost>(
       required: true
     },
     image: {
-      type: String // Cloudinary URL if the user selects "Add photo"
+      type: String
     },
     tags: [
       {

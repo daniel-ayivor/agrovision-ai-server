@@ -20,8 +20,6 @@ const app = express();
 // app.use(cors());
 
 
-
-
 app.use(cors({
   origin: [
     "*",
@@ -31,7 +29,6 @@ app.use(cors({
     "https://localhost:3000", 
      "https://localhost:8080",
       "https://localhost:8081",
-
 
   ],
    credentials: true,
