@@ -24,7 +24,7 @@ router.use(protect, adminOnly);
 
 // Layout maps directly matching your routing needs
 router.get("/overview", getSystemSummary);
-router.post("/admin/register", registerAdminUser); // Assuming you have a registerAdmin function in your controller
+router.post("/register", registerAdminUser); // Assuming you have a registerAdmin function in your controller
 router.get("/analytics/crop-breakdown", getCropDistribution);
 router.get("/users", getAllUsers);
 router.patch("/users/:id/role", updateUserRole);
