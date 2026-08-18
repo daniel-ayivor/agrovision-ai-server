@@ -10,16 +10,16 @@ import {
 const router = Router();
 
 // Secure all endpoints below with your token session protection layer
-router.use(protect);
+// router.use(protect);
 
 // General Dashboard Stats Route
 router.get("/dashboard/metrics", getUserDashboardSummary);
 
 // Community Interaction Forum Routes
 router.get("/community/feed", getCommunityPosts);
-router.post("/community/new-post", createCommunityPost);
+router.post("/community/new-post", protect, createCommunityPost);
 
 // Knowledge Base Resource Center Listing Route
-router.get("/knowledge-base/list", getUserKnowledgeBase);
+router.get("/knowledge-base/list", protect, getUserKnowledgeBase);
 
 export default router;
