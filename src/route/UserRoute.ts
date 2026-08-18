@@ -20,6 +20,6 @@ router.get("/community/feed", getCommunityPosts);
 router.post("/community/new-post", protect, createCommunityPost);
 
 // Knowledge Base Resource Center Listing Route
-router.get("/knowledge-base/list", protect, getUserKnowledgeBase);
+router.get("/knowledge-base/list", getUserKnowledgeBase);
 
 export default router;
