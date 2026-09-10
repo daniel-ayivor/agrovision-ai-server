@@ -141,8 +141,7 @@ import FormData from "form-data";
 import { GoogleGenAI } from "@google/genai"; // Import official SDK
 
 // Initialize the Google Gen AI client (picks up process.env.GEMINI_API_KEY automatically)
-const ai = new GoogleGenAI({});
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const createScan = async (req: AuthRequest, res: Response) => {
   try {

@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
+import dotenv from "dotenv";
 import authRoutes from "./route/AuthRoute";
 import adminAuthRoutes from "./route/AdminAuthRoute";
 import scanRoutes from "./route/ScanRoute";
@@ -9,7 +9,7 @@ import weatherRoutes from "./route/WeatherRoute";
 import imageUploadRoutes from "./route/ImageRoute";
 import userDashboardRouter from "./route/UserRoute";
 import adminRouter from "./route/AdminRoute";
-
+dotenv.config(); // Must be line 1!
 const app = express();
 
 
