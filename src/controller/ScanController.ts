@@ -16,14 +16,17 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // 1. Declare the retry helper outside the controller function
 async function generateWithRetry(aiClient: any, payload: any, retries = 3, delay = 1500) {
+  const fallbackModel = "gemini-2.5-flash"; // different capacity pool
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      return await aiClient.models.generateContent(payload);
+      const model = attempt === retries ? fallbackModel : payload.model;
+      return await aiClient.models.generateContent({ ...payload, model });
     } catch (error: any) {
-      if (attempt < retries && (error.status === 503 || error.message?.includes("503") || error.message?.includes("high demand"))) {
+      const overloaded = error.status === 503 || error.message?.includes("503") || error.message?.includes("high demand");
+      if (attempt < retries && overloaded) {
         console.warn(`Gemini overloaded (503). Retrying attempt ${attempt + 1} in ${delay}ms...`);
         await new Promise(res => setTimeout(res, delay));
-        delay *= 2; // Exponential backoff
+        delay *= 2;
       } else {
         throw error;
       }
