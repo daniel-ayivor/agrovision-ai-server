@@ -528,35 +528,89 @@ export const getAllScansAdmin = async (req: AuthRequest, res: Response) => {
 // ====================================
 // GET SCAN ANALYTICS (Admin Only)
 // ====================================
+// export const getScanAnalytics = async (req: AuthRequest, res: Response) => {
+//   try {
+//     // 1. Total system metrics
+//     const totalScans = await Scan.countDocuments();
+    
+//     // 2. Average confidence score across all scans
+//     const avgConfidenceResult = await Scan.aggregate([
+//       { $group: { _id: null, avgConfidence: { $avg: "$confidence" } } }
+//     ]);
+//     const averageConfidence = avgConfidenceResult[0]?.avgConfidence || 0;
+
+//     // 3. Crop Distribution (Counts per crop for pie/bar charts)
+//     const cropDistribution = await Scan.aggregate([
+//       { $group: { _id: "$crop", count: { $sum: 1 } } },
+//       { $sort: { count: -1 } },
+//       { $project: { _id: 0, crop: "$_id", count: 1 } }
+//     ]);
+
+//     // 4. Confidence Distribution Buckets (e.g., High >80%, Medium 50-80%, Low <50%)
+//     const highConfidence = await Scan.countDocuments({ confidence: { $gte: 80 } });
+//     const mediumConfidence = await Scan.countDocuments({ confidence: { $gte: 50, $lt: 80 } });
+//     const lowConfidence = await Scan.countDocuments({ confidence: { $lt: 50 } });
+
+//     // 5. Daily Scan Volume (Last 7 days for line charts)
+//     const sevenDaysAgo = new Date();
+//     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+//     const dailyScans = await Scan.aggregate([
+//       { $match: { createdAt: { $gte: sevenDaysAgo } } },
+//       {
+//         $group: {
+//           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+//           count: { $sum: 1 }
+//         }
+//       },
+//       { $sort: { _id: 1 } },
+//       { $project: { _id: 0, date: "$_id", count: 1 } }
+//     ]);
+
+//     res.status(200).json({
+//       success: true,
+//       analytics: {
+//         totalScans,
+//         averageConfidence: Math.round(averageConfidence * 100) / 100,
+//         confidenceBuckets: {
+//           high: highConfidence,
+//           medium: mediumConfidence,
+//           low: lowConfidence
+//         },
+//         cropDistribution,
+//         dailyScans
+//       }
+//     });
+//   } catch (error: any) {
+//     console.error("Analytics Error:", error.message);
+//     res.status(500).json({ success: false, message: "Server Error" });
+//   }
+// };
+
+// ====================================
+// GET SCAN ANALYTICS (Admin Only)
+// ====================================
 export const getScanAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    // 1. Total system metrics
     const totalScans = await Scan.countDocuments();
     
-    // 2. Average confidence score across all scans
     const avgConfidenceResult = await Scan.aggregate([
       { $group: { _id: null, avgConfidence: { $avg: "$confidence" } } }
     ]);
     const averageConfidence = avgConfidenceResult[0]?.avgConfidence || 0;
 
-    // 3. Crop Distribution (Counts per crop for pie/bar charts)
     const cropDistribution = await Scan.aggregate([
       { $group: { _id: "$crop", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $project: { _id: 0, crop: "$_id", count: 1 } }
     ]);
 
-    // 4. Confidence Distribution Buckets (e.g., High >80%, Medium 50-80%, Low <50%)
     const highConfidence = await Scan.countDocuments({ confidence: { $gte: 80 } });
     const mediumConfidence = await Scan.countDocuments({ confidence: { $gte: 50, $lt: 80 } });
     const lowConfidence = await Scan.countDocuments({ confidence: { $lt: 50 } });
 
-    // 5. Daily Scan Volume (Last 7 days for line charts)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+    // Daily scan volume for charts
     const dailyScans = await Scan.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -586,4 +640,3 @@ export const getScanAnalytics = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-
