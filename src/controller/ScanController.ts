@@ -15,18 +15,54 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 
 // 1. Declare the retry helper outside the controller function
-async function generateWithRetry(aiClient: any, payload: any, retries = 3, delay = 1500) {
-  const fallbackModel = "gemini-2.5-flash"; // different capacity pool
+async function callOpenRouterFallback(base64Data: string, prompt: string) {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "qwen/qwen2.5-vl-72b-instruct:free",
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
+        ]
+      }],
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter fallback failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  // Normalize to look like Gemini's response shape so the rest of your code doesn't care which provider answered
+  return { text: data.choices?.[0]?.message?.content ?? "{}" };
+}
+
+async function generateWithRetry(
+  aiClient: any,
+  payload: any,
+  base64Data: string,
+  prompt: string,
+  retries = 3,
+  delay = 1500
+) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const model = attempt === retries ? fallbackModel : payload.model;
-      return await aiClient.models.generateContent({ ...payload, model });
+      return await aiClient.models.generateContent(payload);
     } catch (error: any) {
       const overloaded = error.status === 503 || error.message?.includes("503") || error.message?.includes("high demand");
       if (attempt < retries && overloaded) {
         console.warn(`Gemini overloaded (503). Retrying attempt ${attempt + 1} in ${delay}ms...`);
         await new Promise(res => setTimeout(res, delay));
         delay *= 2;
+      } else if (overloaded) {
+        console.warn("Gemini exhausted all retries. Falling back to OpenRouter.");
+        return await callOpenRouterFallback(base64Data, prompt);
       } else {
         throw error;
       }
@@ -58,18 +94,36 @@ export const createScan = async (req: AuthRequest, res: Response) => {
     }`;
 
     // 2. Call it cleanly inside your controller
-    const geminiResponse = await generateWithRetry(ai, {
-      model: "gemini-3.6-flash",
-      contents: [
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: "image/jpeg"
-          }
-        },
-        prompt
-      ],
-    });
+    // const geminiResponse = await generateWithRetry(ai, {
+    //   model: "gemini-3.6-flash",
+    //   contents: [
+    //     {
+    //       inlineData: {
+    //         data: base64Data,
+    //         mimeType: "image/jpeg"
+    //       }
+    //     },
+    //     prompt
+    //   ],
+    // });
+
+    const geminiResponse = await generateWithRetry(
+  ai,
+  {
+    model: "gemini-3.6-flash",
+    contents: [
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: "image/jpeg"
+        }
+      },
+      prompt
+    ],
+  },
+  base64Data,
+  prompt
+);
 
     const rawText = geminiResponse.text || "{}";
     const cleanedJsonText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
