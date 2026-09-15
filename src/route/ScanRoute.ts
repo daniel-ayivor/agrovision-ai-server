@@ -4,7 +4,8 @@ import {
   createScan,
   getMyScans,
   getSingleScan,
-  deleteScan
+  deleteScan,
+  deleteMyScan
 } from "../controller/ScanController";
 
 import { protect } from "../middleware/Middleware";
@@ -34,5 +35,5 @@ router.delete(
   protect,
   deleteScan
 );
-
+router.delete("/scans/:id", protect, deleteMyScan);
 export default router;
