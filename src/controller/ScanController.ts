@@ -39,9 +39,8 @@ export const createScan = async (req: AuthRequest, res: Response) => {
       "details": "string"
     }`;
 
-
     const geminiResponse = await ai.models.generateContent({
-      model: "gemini-1.5-flash", // Use a valid stable flash model ID
+      model: "gemini-2.5-flash", // or "gemini-3.8-flash"
       contents: [
         {
           inlineData: {
@@ -52,6 +51,19 @@ export const createScan = async (req: AuthRequest, res: Response) => {
         prompt
       ],
     });
+
+    // const geminiResponse = await ai.models.generateContent({
+    //   model: "gemini-1.5-flash", // Use a valid stable flash model ID
+    //   contents: [
+    //     {
+    //       inlineData: {
+    //         data: base64Data,
+    //         mimeType: "image/jpeg"
+    //       }
+    //     },
+    //     prompt
+    //   ],
+    // });
     // const geminiResponse = await ai.models.generateContent({
     //   model: "gemini-3.6-flash",
     //   contents: [
