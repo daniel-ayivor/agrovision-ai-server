@@ -14,6 +14,22 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 
 
+// 1. Declare the retry helper outside the controller function
+async function generateWithRetry(aiClient: any, payload: any, retries = 3, delay = 1500) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await aiClient.models.generateContent(payload);
+    } catch (error: any) {
+      if (attempt < retries && (error.status === 503 || error.message?.includes("503") || error.message?.includes("high demand"))) {
+        console.warn(`Gemini overloaded (503). Retrying attempt ${attempt + 1} in ${delay}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2; // Exponential backoff
+      } else {
+        throw error;
+      }
+    }
+  }
+}
 
 export const createScan = async (req: AuthRequest, res: Response) => {
   try {
@@ -24,7 +40,6 @@ export const createScan = async (req: AuthRequest, res: Response) => {
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
 
-    // Strict prompt to ensure accurate visual cross-validation
     const prompt = `Analyze this plant image as an expert agronomist. 
     1. Identify the exact crop name (e.g. Maize, Cassava, Tomato, etc.).
     2. Identify any disease, pest damage, or state of health.
@@ -39,8 +54,9 @@ export const createScan = async (req: AuthRequest, res: Response) => {
       "details": "string"
     }`;
 
-const geminiResponse = await ai.models.generateContent({
-      model: "gemini-3.6-flash", // Update to the model string required by your current API tier
+    // 2. Call it cleanly inside your controller
+    const geminiResponse = await generateWithRetry(ai, {
+      model: "gemini-3.6-flash",
       contents: [
         {
           inlineData: {
@@ -52,14 +68,12 @@ const geminiResponse = await ai.models.generateContent({
       ],
     });
 
-    // Parse the text response safely (extracting JSON)
     const rawText = geminiResponse.text || "{}";
     const cleanedJsonText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
     const resultData = JSON.parse(cleanedJsonText);
 
-    // Save directly to MongoDB
     const scan = await Scan.create({
-      user: req.user.id,
+      user: req.user?.id,
       image,
       crop: resultData.crop || "Unknown",
       prediction: resultData.prediction || "Healthy/Unknown",
@@ -67,22 +81,20 @@ const geminiResponse = await ai.models.generateContent({
       details: resultData.details || "No details available.",
     });
 
-res.status(201).json({
-  success: true,
-  scan,
-});
-    
+    return res.status(201).json({
+      success: true,
+      scan,
+    });
 
   } catch (error: any) {
     console.error("Gemini Vision Scan Error:", error.message);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "AI Processing Failed",
       details: error.message,
     });
   }
 };
-
 
 // ====================================
 // GET MY SCANS
