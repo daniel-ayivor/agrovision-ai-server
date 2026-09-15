@@ -467,3 +467,123 @@ export const deleteScan = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
+
+// ====================================
+// DELETE SCAN (User: Only own scans)
+// ====================================
+export const deleteMyScan = async (req: AuthRequest, res: Response) => {
+  try {
+    const scan = await Scan.findById(req.params.id);
+    if (!scan) {
+      return res.status(404).json({ success: false, message: "Scan not found" });
+    }
+
+    // Ensure the logged-in user owns this scan
+    if (scan.user.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Unauthorized: You can only delete your own scans" });
+    }
+
+    await scan.deleteOne();
+    res.status(200).json({ success: true, message: "Scan deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// ====================================
+// DELETE SCAN (Admin: Any scan)
+// ====================================
+export const deleteScanAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const scan = await Scan.findById(req.params.id);
+    if (!scan) {
+      return res.status(404).json({ success: false, message: "Scan not found" });
+    }
+
+    await scan.deleteOne();
+    res.status(200).json({ success: true, message: "Scan deleted by admin successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+export const getAllScansAdmin = async (req: AuthRequest, res: Response) => {
+  try {
+    const scans = await Scan.find({})
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+      
+    res.status(200).json({ 
+      success: true, 
+      count: scans.length, 
+      scans 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+// ====================================
+// GET SCAN ANALYTICS (Admin Only)
+// ====================================
+export const getScanAnalytics = async (req: AuthRequest, res: Response) => {
+  try {
+    // 1. Total system metrics
+    const totalScans = await Scan.countDocuments();
+    
+    // 2. Average confidence score across all scans
+    const avgConfidenceResult = await Scan.aggregate([
+      { $group: { _id: null, avgConfidence: { $avg: "$confidence" } } }
+    ]);
+    const averageConfidence = avgConfidenceResult[0]?.avgConfidence || 0;
+
+    // 3. Crop Distribution (Counts per crop for pie/bar charts)
+    const cropDistribution = await Scan.aggregate([
+      { $group: { _id: "$crop", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $project: { _id: 0, crop: "$_id", count: 1 } }
+    ]);
+
+    // 4. Confidence Distribution Buckets (e.g., High >80%, Medium 50-80%, Low <50%)
+    const highConfidence = await Scan.countDocuments({ confidence: { $gte: 80 } });
+    const mediumConfidence = await Scan.countDocuments({ confidence: { $gte: 50, $lt: 80 } });
+    const lowConfidence = await Scan.countDocuments({ confidence: { $lt: 50 } });
+
+    // 5. Daily Scan Volume (Last 7 days for line charts)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const dailyScans = await Scan.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, date: "$_id", count: 1 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        totalScans,
+        averageConfidence: Math.round(averageConfidence * 100) / 100,
+        confidenceBuckets: {
+          high: highConfidence,
+          medium: mediumConfidence,
+          low: lowConfidence
+        },
+        cropDistribution,
+        dailyScans
+      }
+    });
+  } catch (error: any) {
+    console.error("Analytics Error:", error.message);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+

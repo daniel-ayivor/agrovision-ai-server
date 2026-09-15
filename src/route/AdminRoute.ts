@@ -14,10 +14,14 @@ import {
   updateArticle,
   deleteArticle,
   getCommunityPostsForAdmin,
-  deleteCommunityPostByAdmin
+  deleteCommunityPostByAdmin,
+
 } from "../controller/Admin/AdminController";
+
+
 import { adminOnly } from "../middleware/MiddlewareAdmin";
 import { registerAdminUser } from "../controller/AuthController";
+import { deleteScanAdmin, getAllScansAdmin, getScanAnalytics } from "../controller/ScanController";
 
 const router = Router();
 
@@ -34,9 +38,12 @@ router.get("/knowledge", protect, getArticles);
 router.post("/knowledge", protect, adminOnly, createArticle);
 router.put("/knowledge/:id", protect, adminOnly, updateArticle);
 router.delete("/knowledge/:id", protect, adminOnly, deleteArticle);
+router.get("/admin/scans", protect, adminOnly, getAllScansAdmin);
+router.delete("/admin/scans/:id", protect, adminOnly, deleteScanAdmin);
 
 // Community Feed Management Routes for Admins
 router.get("/community/feed", protect, adminOnly, getCommunityPostsForAdmin);
 router.delete("/community/posts/:id", protect, adminOnly, deleteCommunityPostByAdmin);
+router.get("/admin/analytics", protect, adminOnly, getScanAnalytics);
 
 export default router;
