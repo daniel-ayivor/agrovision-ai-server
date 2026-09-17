@@ -20,9 +20,7 @@ import {
 
 } from "../controller/Admin/AdminController";
 
-
 import { adminOnly } from "../middleware/MiddlewareAdmin";
-import {authorize, authorize} from "../middleware/Middleware"; // Adjust paths to your middleware files
 import { registerAdminUser } from "../controller/AuthController";
 import { deleteScanAdmin, getAllScansAdmin, getScanAnalytics } from "../controller/ScanController";
 
