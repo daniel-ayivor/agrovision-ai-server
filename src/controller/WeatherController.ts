@@ -1,13 +1,14 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/Middleware";
 import CropSeason from "../model/cropSeasonModel";
-import User from "../model/Auth"; // 👈 Ensure this matches your User model path
+import User from "../model/Auth";
 
 export const getLocalizedAdvisory = async (req: AuthRequest, res: Response) => {
   try {
-    let userRegion = req.user?.region;
+    // 🎯 Priority 1: Check if region was passed directly as a query parameter from frontend storage
+    let userRegion = (req.query.region as string) || req.user?.region;
 
-    // 🛡️ Fallback: If region is missing from the token payload, fetch fresh from MongoDB
+    // 🛡️ Fallback 2: Check token or fetch fresh from MongoDB if query param is missing
     if (!userRegion && (req.user?.id || req.user?._id)) {
       const dbUser = await User.findById(req.user.id || req.user._id);
       if (dbUser) {
@@ -21,14 +22,13 @@ export const getLocalizedAdvisory = async (req: AuthRequest, res: Response) => {
         message: "Region not specified in user profile. Please update your profile region.",
       });
     }
-    // json response structure for the advisory
 
     // 1. Fetch optimal planting/harvesting rules from MongoDB
     const regionalGuides = await CropSeason.find({
       region: { $regex: new RegExp(userRegion, "i") },
     });
 
-    // 2. Fetch coordinates for the user's region first using Open-Meteo Geocoding
+    // 2. Fetch coordinates using Open-Meteo Geocoding
     let weatherInfo = null;
     try {
       const geoRes = await fetch(
@@ -39,7 +39,7 @@ export const getLocalizedAdvisory = async (req: AuthRequest, res: Response) => {
       if (geoData.results && geoData.results.length > 0) {
         const { latitude, longitude } = geoData.results[0];
 
-        // 3. Fetch real-time weather from Open-Meteo (Keyless & Free!)
+        // 3. Fetch real-time weather from Open-Meteo
         const weatherRes = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`
         );
