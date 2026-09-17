@@ -21,6 +21,7 @@ export const getLocalizedAdvisory = async (req: AuthRequest, res: Response) => {
         message: "Region not specified in user profile. Please update your profile region.",
       });
     }
+    // json response structure for the advisory
 
     // 1. Fetch optimal planting/harvesting rules from MongoDB
     const regionalGuides = await CropSeason.find({
