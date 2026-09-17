@@ -291,7 +291,6 @@ export const getProfile = async (
 // ====================================
 // UPDATE PROFILE
 // ====================================
-
 export const updateProfile = async (
   req: AuthRequest,
   res: Response
@@ -304,9 +303,9 @@ export const updateProfile = async (
     if (region !== undefined) updateData.region = region;
     if (farmSize !== undefined) updateData.farmSize = farmSize;
     
-    // SAFETY CHECK: Only update profileImage if it's a valid non-empty string
-    if (profileImage !== undefined && typeof profileImage === "string" && profileImage.trim() !== "") {
-      updateData.profileImage = profileImage;
+    // Allow updating if it's a valid string OR an explicit empty string (to clear it)
+    if (profileImage !== undefined && typeof profileImage === "string" && !profileImage.startsWith("blob:")) {
+      updateData.profileImage = profileImage; 
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -316,23 +315,14 @@ export const updateProfile = async (
     ).select("-password");
 
     if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({
-      success: true,
-      user: updatedUser
-    });
+    res.status(200).json({ success: true, user: updatedUser });
 
   } catch (error) {
     console.log(error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 // ====================================
