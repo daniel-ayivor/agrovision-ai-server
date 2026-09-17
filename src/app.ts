@@ -9,6 +9,7 @@ import weatherRoutes from "./route/WeatherRoute";
 import imageUploadRoutes from "./route/ImageRoute";
 import userDashboardRouter from "./route/UserRoute";
 import adminRouter from "./route/AdminRoute";
+import visitRoutes from "./route/visitRoutes";
 dotenv.config(); // Must be line 1!
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/api/weather", weatherRoutes);
 app.use("/api/userspace", userDashboardRouter);
 // Mount management routes safely
 app.use("/api/admin", adminRouter);
+app.use("/api/visits", visitRoutes);
 
 app.use("/api/images", imageUploadRoutes);
 
