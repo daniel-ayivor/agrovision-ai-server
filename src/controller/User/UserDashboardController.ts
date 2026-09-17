@@ -117,43 +117,7 @@ export const getCommunityPosts = async (req: AuthRequest, res: Response) => {
 
 
 // ====================================
-// 4. KNOWLEDGE BASE: DISEASE DIRECTORY
-// ====================================
-// export const getUserKnowledgeBase = async (req: Request, res: Response) => {
-//   try {
-//     // Generates a comprehensive dynamic crop dictionary out of existing Scan logs
-//     const diseaseGuides = await Scan.aggregate([
-//       {
-//         $match: {
-//           crop: { $ne: "Not a valid plant image or disease not recognized" },
-//           prediction: { $ne: "Not A Valid Plant Image Or Disease Not Recognized" }
-//         }
-//       },
-//       {
-//         $group: {
-//           _id: { crop: "$crop", prediction: "$prediction" },
-//           averageConfidence: { $avg: "$confidence" }
-//         }
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           diseaseName: "$_id.prediction",
-//           cropType: "$_id.crop",
-//           perceivedSeverity: {
-//             // Evaluates severity index targets based on typical machine model margins
-//             $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }
-//           }
-//         }
-//       },
-//       { $sort: { cropType: 1, diseaseName: 1 } }
-//     ]);
 
-//     return res.status(200).json({ success: true, data: diseaseGuides });
-//   } catch (error: any) {
-//     return res.status(500).json({ success: false, message: "Failed to assemble knowledge resources", error: error.message });
-//   }
-// };
 
 
 export const getUserKnowledgeBase = async (req: Request, res: Response) => {
@@ -180,9 +144,14 @@ export const getUserKnowledgeBase = async (req: Request, res: Response) => {
         }
       },
       {
+        $sort: { createdAt: -1 } // Sort by newest first so $first picks the latest image
+      },
+      {
         $group: {
           _id: { crop: "$crop", prediction: "$prediction" },
-          averageConfidence: { $avg: "$confidence" }
+          averageConfidence: { $avg: "$confidence" },
+          image: { $first: "$image" }, // 🌟 Grabs an image from the matching scan records
+          createdAt: { $first: "$createdAt" }
         }
       },
       {
@@ -190,6 +159,7 @@ export const getUserKnowledgeBase = async (req: Request, res: Response) => {
           _id: 0,
           diseaseName: "$_id.prediction",
           cropType: "$_id.crop",
+          image: 1, // Include the image in the final JSON response
           perceivedSeverity: {
             // Evaluates severity index targets based on typical machine model margins
             $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }

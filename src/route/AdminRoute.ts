@@ -15,6 +15,8 @@ import {
   deleteArticle,
   getCommunityPostsForAdmin,
   deleteCommunityPostByAdmin,
+  labelUnrecognizedScan,
+  getUnrecognizedScansForReview,
 
 } from "../controller/Admin/AdminController";
 
@@ -45,5 +47,30 @@ router.delete("/admin/scans/:id", protect, adminOnly, deleteScanAdmin);
 router.get("/community/feed", protect, adminOnly, getCommunityPostsForAdmin);
 router.delete("/community/posts/:id", protect, adminOnly, deleteCommunityPostByAdmin);
 router.get("/admin/analytics", protect, adminOnly, getScanAnalytics);
+
+
+
+
+// ==========================================
+// ADMIN: UNRECOGNIZED SCANS ACTIVE LEARNING PIPELINE
+// ==========================================
+
+// 1. Fetch unrecognized scans (defaults to pending items, or filter via ?status=...)
+router.get(
+  "/admin/unrecognized-scans", 
+  protect, 
+  adminOnly, 
+  getUnrecognizedScansForReview
+);
+
+// 2. Update/label an unrecognized scan so it's prepped for model retraining
+router.put(
+  "/admin/unrecognized-scans/label", 
+  protect, 
+  adminOnly, 
+  labelUnrecognizedScan
+);
+
+
 
 export default router;

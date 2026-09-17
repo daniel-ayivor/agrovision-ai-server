@@ -2,6 +2,7 @@ import { Response, NextFunction } from "express";
 import { AuthRequest } from "../../middleware/Middleware"; 
 import Scan from "../../model/Model";
 import KnowledgeArticle from "../../model/Knowledge";
+import UnrecognizedScan from "../../model/UnrecognizedScan";
 import User from "../../model/Auth"; // adjust path to match your actual model file
 import PostModel from "../../model/Post"; // Adjust path to your Community Post model file
 export const getSystemSummary = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -283,5 +284,85 @@ export const deleteArticle = async (req: AuthRequest, res: Response) => {
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+
+
+// import UnrecognizedScan from "../../model/UnrecognizedScan";
+
+// ====================================
+// ADMIN: FETCH UNRECOGNIZED SCANS FOR REVIEW
+// ====================================
+export const getUnrecognizedScansForReview = async (req: AuthRequest, res: Response) => {
+  try {
+    // Optional filter by status (e.g., ?status=Pending Review)
+    const { status } = req.query;
+    let filter: any = {};
+    
+    if (status) {
+      filter.status = status;
+    } else {
+      filter.status = "Pending Review"; // Default to pending items
+    }
+
+    const scans = await UnrecognizedScan.find(filter)
+      .populate("farmerId", "name email region")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: scans.length,
+      data: scans
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch unrecognized scans",
+      error: error.message
+    });
+  }
+};
+
+// ====================================
+// ADMIN: LABEL & PROCESS UNRECOGNIZED SCAN
+// ====================================
+export const labelUnrecognizedScan = async (req: AuthRequest, res: Response) => {
+  try {
+    const { scanId, correctLabel, actionStatus } = req.body; 
+    // actionStatus can be "Labeled & Added to Dataset" or "Discarded"
+
+    if (!scanId || !correctLabel) {
+      return res.status(400).json({
+        success: false,
+        message: "Scan ID and correct label are required."
+      });
+    }
+
+    const updatedScan = await UnrecognizedScan.findByIdAndUpdate(
+      scanId,
+      {
+        correctLabel,
+        status: actionStatus || "Labeled & Added to Dataset"
+      },
+      { new: true }
+    );
+
+    if (!updatedScan) {
+      return res.status(404).json({ success: false, message: "Unrecognized scan record not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Scan successfully labeled and queued for model training pipeline.",
+      data: updatedScan
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update scan label",
+      error: error.message
+    });
   }
 };
