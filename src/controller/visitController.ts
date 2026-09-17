@@ -7,7 +7,7 @@ import FarmVisit from "../model/visitModel"; // Make sure path matches your mode
 // ====================================
 export const scheduleVisit = async (req: AuthRequest, res: Response) => {
   try {
-    const { farmerId, scheduledDate, notes } = req.body;
+    const { farmerId, scheduledDate, visitNotes, notes } = req.body;
 
     if (!farmerId || !scheduledDate) {
       return res.status(400).json({ 
@@ -17,10 +17,10 @@ export const scheduleVisit = async (req: AuthRequest, res: Response) => {
     }
 
     const visit = await FarmVisit.create({
-      officer: req.user.id, // The logged-in officer scheduling it
+      officer: req.user?._id || req.user?.id, // Ensure this matches your auth middleware structure
       farmer: farmerId,
       scheduledDate: new Date(scheduledDate),
-      visitNotes: notes || "",
+      visitNotes: visitNotes || notes || "",
       status: "scheduled"
     });
 
@@ -34,8 +34,8 @@ export const scheduleVisit = async (req: AuthRequest, res: Response) => {
       visit: populatedVisit,
     });
   } catch (error: any) {
-    console.error("Schedule Visit Error:", error.message);
-    return res.status(500).json({ success: false, message: "Server Error" });
+    console.error("Schedule Visit Error Stack:", error); // Log the full error object, not just message
+    return res.status(400).json({ success: false, message: error.message || "Server Error" });
   }
 };
 
