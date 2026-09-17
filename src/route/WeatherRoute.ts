@@ -1,10 +1,9 @@
    
 import express from "express";
-import { getGeocode } from "../controller/WeatherController";
+import { getLocalizedAdvisory } from "../controller/WeatherController";
     const router = express.Router();
 
-
-   router.get("/geocode", getGeocode);
+   router.get("/localized-advisory", getLocalizedAdvisory);
 
 
 export default router;
