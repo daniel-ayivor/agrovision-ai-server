@@ -1,35 +1,101 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/Middleware";
+import CropSeason from "../model/cropSeasonModel"; // Ensure path matches your model structure
 
-export const getGeocode = async (req: AuthRequest, res: Response) => {
+// export const getGeocode = async (req: AuthRequest, res: Response) => {
+//   try {
+//     const { latitude, longitude, name } = req.query;
+
+//     // 📍 1. FIX: Reverse Geocoding (Coordinates -> Text Location Name)
+//     if (latitude && longitude) {
+//       // CRITICAL: Ensure this points to geocoding-api.open-meteo.com/v1/reverse
+//       const response = await fetch(
+//         `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&count=1`
+//       );
+      
+//       const data = await response.json();
+//       return res.json(data);
+//     }
+
+//     // 🔍 2. Forward Geocoding (Text Name -> Coordinates)
+//     if (name) {
+//       const response = await fetch(
+//         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(String(name))}&count=1&language=en`
+//       );
+      
+//       const data = await response.json();
+//       return res.json(data);
+//     }
+
+//     return res.status(400).json({ error: "Missing query parameters" });
+
+//   } catch (error) {
+//     console.error("Backend Proxy Error:", error);
+//     return res.status(500).json({ error: "Failed fetching data from geocoding API" });
+//   }
+// };
+
+export const getLocalizedAdvisory = async (req: AuthRequest, res: Response) => {
   try {
-    const { latitude, longitude, name } = req.query;
+    const userRegion = req.user?.region;
 
-    // 📍 1. FIX: Reverse Geocoding (Coordinates -> Text Location Name)
-    if (latitude && longitude) {
-      // CRITICAL: Ensure this points to geocoding-api.open-meteo.com/v1/reverse
-      const response = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${latitude}&longitude=${longitude}&language=en&count=1`
-      );
-      
-      const data = await response.json();
-      return res.json(data);
+    if (!userRegion) {
+      return res.status(400).json({
+        success: false,
+        message: "Region not specified in user profile. Please update your profile region.",
+      });
     }
 
-    // 🔍 2. Forward Geocoding (Text Name -> Coordinates)
-    if (name) {
-      const response = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(String(name))}&count=1&language=en`
+    // 1. Fetch optimal planting/harvesting rules from MongoDB
+    const regionalGuides = await CropSeason.find({
+      region: { $regex: new RegExp(userRegion, "i") },
+    });
+
+    // 2. Fetch coordinates for the user's region first using Open-Meteo Geocoding
+    let weatherInfo = null;
+    try {
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(userRegion)}&count=1&language=en`
       );
-      
-      const data = await response.json();
-      return res.json(data);
+      const geoData = await geoRes.json();
+
+      if (geoData.results && geoData.results.length > 0) {
+        const { latitude, longitude } = geoData.results[0];
+
+        // 3. Fetch real-time weather from Open-Meteo (Keyless & Free!)
+        const weatherRes = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`
+        );
+        const weatherData = await weatherRes.json();
+
+        weatherInfo = {
+          temperature: weatherData.current?.temperature_2m,
+          humidity: weatherData.current?.relative_humidity_2m,
+          windSpeed: weatherData.current?.wind_speed_10m,
+        };
+      }
+    } catch (weatherErr) {
+      console.warn("Could not fetch live weather data from Open-Meteo, relying on seasonal guidelines.");
     }
 
-    return res.status(400).json({ error: "Missing query parameters" });
+    const currentMonthName = new Date().toLocaleString("default", { month: "long" });
 
-  } catch (error) {
-    console.error("Backend Proxy Error:", error);
-    return res.status(500).json({ error: "Failed fetching data from geocoding API" });
+    let actionableAdvice = `Current weather conditions in ${userRegion} are stable for general farming activities.`;
+    if (weatherInfo && weatherInfo.humidity > 85) {
+      actionableAdvice = `High humidity detected in ${userRegion} (${weatherInfo.humidity}%). Watch out for fungal infections and crop diseases; consider scheduling an agricultural officer visit.`;
+    }
+
+    return res.status(200).json({
+      success: true,
+      region: userRegion,
+      currentMonth: currentMonthName,
+      weather: weatherInfo,
+      cropRecommendations: regionalGuides,
+      advisoryPrompt: actionableAdvice,
+    });
+
+  } catch (error: any) {
+    console.error("Localized Advisory Error:", error.message);
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
