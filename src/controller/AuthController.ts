@@ -299,12 +299,15 @@ export const updateProfile = async (
   try {
     const { name, region, farmSize, profileImage } = req.body;
 
-    // Build update object dynamically to only update provided fields
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
     if (region !== undefined) updateData.region = region;
     if (farmSize !== undefined) updateData.farmSize = farmSize;
-    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    
+    // SAFETY CHECK: Only update profileImage if it's a valid non-empty string
+    if (profileImage !== undefined && typeof profileImage === "string" && profileImage.trim() !== "") {
+      updateData.profileImage = profileImage;
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
