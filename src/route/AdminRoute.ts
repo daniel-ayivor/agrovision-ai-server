@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { protect } from "../middleware/Middleware"; // Adjust paths to your middleware files
+import { authorize, protect } from "../middleware/Middleware"; // Adjust paths to your middleware files
 
 import {
   getSystemSummary,
@@ -22,6 +22,7 @@ import {
 
 
 import { adminOnly } from "../middleware/MiddlewareAdmin";
+import {authorize, authorize} from "../middleware/Middleware"; // Adjust paths to your middleware files
 import { registerAdminUser } from "../controller/AuthController";
 import { deleteScanAdmin, getAllScansAdmin, getScanAnalytics } from "../controller/ScanController";
 
@@ -31,7 +32,7 @@ const router = Router();
 router.get("/overview", protect, adminOnly, getSystemSummary);
 router.post("/auth/register", protect, adminOnly, registerAdminUser);
 router.get("/analytics/crop-breakdown", protect, adminOnly, getCropDistribution);
-router.get("/users", protect, adminOnly, getAllUsers);
+router.get("/users", protect, authorize("agricultural_officer", "admin"), getAllUsers);
 router.patch("/users/:id/role", protect, adminOnly, updateUserRole);
 router.delete("/users/:id", protect, adminOnly, banUser);
 router.get("/reports", protect, adminOnly, getSubmittedReports);
