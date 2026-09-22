@@ -52,7 +52,13 @@ export const authorize = (...allowedRoles: string[]) => {
       return res.status(401).json({ success: false, message: "Not authorized, no user found" });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // Normalize the user's role (lowercase + trim)
+    const userRole = req.user.role?.toLowerCase()?.trim();
+    
+    // Normalize allowed roles as well
+    const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase().trim());
+
+    if (!userRole || !normalizedAllowedRoles.includes(userRole)) {
       return res.status(403).json({ 
         success: false, 
         message: `Role '${req.user.role}' is not authorized to access this route` 
