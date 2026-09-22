@@ -12,12 +12,12 @@ import { protect, authorize } from "../middleware/Middleware";
 const router = Router();
 
 // Protected routes (Any logged-in user matching their respective role)
-router.get("/my-schedule", protect, getMyVisits);
+router.get("/farmer/my-schedule", protect, getMyVisits);
 
 // ==========================================
 // NEW: Farmer Response (Confirm / Reschedule)
 // ==========================================
-router.put("/:id/respond", protect, authorize("farmer"), farmerRespondToVisit);
+router.put("/farmer/:id/respond", protect, authorize("farmer"), farmerRespondToVisit);
 
 // Officer or Admin can schedule
 router.post("/", protect, authorize("agricultural_officer", "admin"), scheduleVisit);
