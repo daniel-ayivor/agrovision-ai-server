@@ -160,28 +160,38 @@ export const getArticles = async (req: AuthRequest, res: Response) => {
     }
 
     // 2. Otherwise, aggregate distinct diseases from scan logs as an auto-discovery fallback
-    const distinctScans = await Scan.aggregate([
-      {
-        $group: {
-          _id: { crop: "$crop", prediction: "$prediction" },
-          averageConfidence: { $avg: "$confidence" },
-          totalOccurrences: { $sum: 1 }
-        }
+const distinctScans = await Scan.aggregate([
+  {
+    $match: {
+      prediction: {
+        $exists: true,
+        $nin: [null, ""],
+        $not: /unclear|unrecognized|please upload|invalid image/i
+      }
+    }
+  },
+  {
+    $group: {
+      _id: { crop: "$crop", prediction: "$prediction" },
+      averageConfidence: { $avg: "$confidence" },
+      totalOccurrences: { $sum: 1 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      id: { $concat: ["$_id.crop", "-", "$_id.prediction"] },
+      title: "$_id.prediction",
+      crop: "$_id.crop",
+      severity: {
+        $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }
       },
-      {
-        $project: {
-          _id: 0,
-          id: { $concat: ["$_id.crop", "-", "$_id.prediction"] },
-          title: "$_id.prediction",
-          crop: "$_id.crop",
-          severity: {
-            $cond: { if: { $gte: ["$averageConfidence", 85] }, then: "High", else: "Medium" }
-          },
-          totalOccurrences: 1
-        }
-      },
-      { $sort: { title: 1 } }
-    ]);
+      totalOccurrences: 1,
+      isSynthetic: { $literal: true }
+    }
+  },
+  { $sort: { title: 1 } }
+]);
 
     return res.status(200).json({ success: true, data: distinctScans });
   } catch (err: any) {

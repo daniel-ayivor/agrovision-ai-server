@@ -3,9 +3,9 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IKnowledgeArticle extends Document {
   title: string;
   crop: string;
-  category?: string; // e.g., "Disease", "Pest", "Nutrition"
+  category?: string;
   severity: "High" | "Medium" | "Low";
-  image?: string;    // URL or file path for the article/disease image
+  image?: string;    
   content?: string;
   createdAt: Date;
   updatedAt: Date;
