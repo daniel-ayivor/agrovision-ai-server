@@ -35,10 +35,13 @@ router.put(
   protect,
   changePassword
 );
-router.delete("/delete-account", protect, adminOnly, authorize("admin"), deleteUser);
+router.delete("/users/delete-account/:id", protect, adminOnly, authorize("admin"), deleteUser);
 
 router.patch("/users/:id/block", protect,adminOnly, authorize("admin"), blockUser);
 router.patch("/users/:id/unblock", protect, adminOnly, authorize("admin"), unblockUser);
 
+/**
+ * Permanently delete a user account by ID (Admin action).
+ */
 
 export default router;
