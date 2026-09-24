@@ -5,9 +5,13 @@ import {
   loginUser,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  blockUser,
+  unblockUser,
+  deleteUser,
 } from "../controller/AuthController";
-import { protect } from "../middleware/Middleware";
+import { protect , authorize} from "../middleware/Middleware";
+import { adminOnly } from "../middleware/MiddlewareAdmin";
 
 const router = express.Router();
 
@@ -31,7 +35,10 @@ router.put(
   protect,
   changePassword
 );
+router.delete("/delete-account", protect, adminOnly, authorize("admin"), deleteUser);
 
+router.patch("/users/:id/block", protect,adminOnly, authorize("admin"), blockUser);
+router.patch("/users/:id/unblock", protect, adminOnly, authorize("admin"), unblockUser);
 
 
 export default router;

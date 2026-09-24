@@ -74,26 +74,3 @@ export const authorize = (...allowedRoles: string[]) => {
   };
 };
 
-// // Role-based authorization middleware
-// export const authorize = (...allowedRoles: string[]) => {
-//   return (req: AuthRequest, res: Response, next: NextFunction) => {
-//     if (!req.user) {
-//       return res.status(401).json({ success: false, message: "Not authorized, no user found" });
-//     }
-
-//     // Normalize the user's role (lowercase + trim)
-//     const userRole = req.user.role?.toLowerCase()?.trim();
-    
-//     // Normalize allowed roles as well
-//     const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase().trim());
-
-//     if (!userRole || !normalizedAllowedRoles.includes(userRole)) {
-//       return res.status(403).json({ 
-//         success: false, 
-//         message: `Role '${req.user.role}' is not authorized to access this route` 
-//       });
-//     }
-
-//     next();
-//   };
-// };

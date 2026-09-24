@@ -282,11 +282,6 @@ export const getProfile = async (
 };
 
 
-// ====================================
-// UPDATE PROFILE
-// ====================================
-
-
 
 // ====================================
 // UPDATE PROFILE
@@ -496,4 +491,116 @@ export const verifyEmail = async (
     success: true,
     message: "Email verified"
   });
+};
+
+
+
+// ====================================
+// DELETE USER
+// ====================================
+export const deleteUser = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user.id;
+
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User account deleted successfully",
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+
+// ====================================
+// BLOCK USER (Admin/Officer action)
+// ====================================
+export const blockUser = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      { $set: { isBlocked: true } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User has been blocked successfully",
+      user,
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+// ====================================
+// UNBLOCK USER (Admin/Officer action)
+// ====================================
+export const unblockUser = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      { $set: { isBlocked: false } },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User has been unblocked successfully",
+      user,
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
 };
