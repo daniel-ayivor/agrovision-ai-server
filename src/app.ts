@@ -53,6 +53,8 @@ app.use("/api/auth", authRoutes);
 
 app.use("/api/auth/admin", adminAuthRoutes);
 
+
+
 app.use("/api/scans", scanRoutes);
 
 app.use("/api/weather", weatherRoutes);

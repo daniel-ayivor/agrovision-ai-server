@@ -498,14 +498,17 @@ export const verifyEmail = async (
 // ====================================
 // DELETE USER
 // ====================================
+// ====================================
+// DELETE USER (Admin action)
+// ====================================
 export const deleteUser = async (
   req: AuthRequest,
   res: Response
 ) => {
   try {
-    const userId = req.user.id;
+    const { id } = req.params; // <-- Fixed: get ID from URL params instead of logged-in user
 
-    const deletedUser = await User.findByIdAndDelete(userId);
+    const deletedUser = await User.findByIdAndDelete(id);
 
     if (!deletedUser) {
       return res.status(404).json({
